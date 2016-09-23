@@ -1,0 +1,27 @@
+{
+  "name": "tale-bot-service",
+  "version": "0.1.0",
+  "description": "Service for bot configuration for the-tale.org game",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/echurmanov/tale-bot-service.git"
+  },
+  "keywords": [
+    "the-tale",
+    "bot"
+  ],
+  "author": "Eugene Churmanov",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/echurmanov/tale-bot-service/issues"
+  },
+  "homepage": "https://github.com/echurmanov/tale-bot-service#readme",
+  "dependencies": {
+    "bluebird": "^3.4.6",
+    "express": "^4.14.0"
+  }
+}

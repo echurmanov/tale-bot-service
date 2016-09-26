@@ -4,21 +4,23 @@ const Promise = require("bluebird");
 const Querystring = require('querystring');
 const EventEmitter = require('events');
 
-const Request = require ('./src/utils.js').PromiseRequest;
-const TokenGenerator = require ('./src/utils.js').TokenGenerator;
-const ParseCookies = require ('./src/utils.js').ParseCookies;
+const Request = require ('./utils.js').PromiseRequest;
+const TokenGenerator = require ('./utils.js').TokenGenerator;
+const ParseCookies = require ('./utils.js').ParseCookies;
 
 const CLIENT_NAME = "CrazyNigerBotService";
 const CLIENT_VERSION = "v0.1.0";
 const HOST = 'the-tale.org';
 
+const AUTH_NONE = 'AUTH_NONE';
 const AUTH_WAIT = 'AUTH_WAIT';
 const AUTH_SUCCESS = 'AUTH_SUCCESS';
 const AUTH_REJECTED = 'AUTH_REJECTED';
 
 const EVENTS = {
   CHANGE_CREDENTIALS: 'CHANGE_CREDENTIALS',
-  AUTH_CONFIRMED: 'AUTH_CONFIRMED'
+  AUTH_CONFIRMED: 'AUTH_CONFIRMED',
+  AUTH_STATE_CHANGED: 'AUTH_STATE_CHANGED'
 };
 
 const ABILITY = {
@@ -46,6 +48,7 @@ class Account extends EventEmitter{
     this.accountId = null;
     this.accountName = null;
     this.sessionExpireAt = null;
+    this.authState = AUTH_NONE;
   }
 
   apiRequest(apiUrl, method, version, getParams, postParams) {
@@ -85,7 +88,6 @@ class Account extends EventEmitter{
         options.headers['Content-Type'] = 'application/x-www-form-urlencoded';
         options.headers['Content-Length'] = Buffer.from(encodedPostData).length;
       }
-      console.log(new Date(), options);
       var request = new Request(options, encodedPostData);
       request.then((response) => {
         if (response.httpStatusCode == 200) {
@@ -99,7 +101,6 @@ class Account extends EventEmitter{
           if (typeof bodyData.status !== 'undefined') {
             switch (bodyData.status) {
               case RESPONSE_STATUS.PROCESSING:
-                console.log("Process REQUEST", bodyData);
                 setTimeout(() => {
                   this.apiRequest(bodyData.status_url, 'GET').then((data)=>resolve(data)).catch((error)=>reject(error));
                 }, CHECK_PROCESS_STATUS_DELAY);
@@ -138,7 +139,14 @@ class Account extends EventEmitter{
         reject(error);
       });
     });
+  }
 
+  setAuthState (newState) {
+    var changed = newState !== this.authState;
+    this.authState = newState;
+    if (changed) {
+      this.emit(EVENTS.AUTH_STATE_CHANGED, this, newState);
+    }
   }
 
   requestAuth(device) {
@@ -170,6 +178,7 @@ class Account extends EventEmitter{
       request.then((bodyData) => {
         switch (bodyData.state) {
           case 1:
+            this.setAuthState(AUTH_WAIT);
             resolve({account: this, state: AUTH_WAIT});
             break;
           case 2:
@@ -180,12 +189,15 @@ class Account extends EventEmitter{
             if (wasNull) {
               this.emit(EVENTS.AUTH_CONFIRMED, this);
             }
+            this.setAuthState(AUTH_SUCCESS);
             resolve({account: this, state: AUTH_SUCCESS});
             break;
           case 3:
+            this.setAuthState(AUTH_REJECTED);
             resolve({account: this, state: AUTH_REJECTED});
             break;
           default:
+            this.setAuthState(AUTH_NONE);
             reject(new Error("Auth not requested"));
             break;
         }
@@ -203,7 +215,6 @@ class Account extends EventEmitter{
       var request = this.apiRequest(url, 'GET', version);
 
       request.then((bodyData) => {
-        //console.log(bodyData.account.hero.base);
         var status = {};
         if (bodyData.account != null) {
           status.cards = {
@@ -309,57 +320,18 @@ class Account extends EventEmitter{
 
 }
 
-function checkAuth(account) {
-  var check = account.checkAuth();
-  check.then(function(res){
-    console.log(res.state);
-    if (res.state == AUTH_WAIT) {
-      //setTimeout(function(){
-      //  checkAuth(account);
-      //}, 15000);
-    }
-  }).catch(function(error){
-    console.error("Request Error", error);
-  })
-}
+module.exports = {
+  Account: Account,
+  ABILITY: ABILITY,
+  AUTH: {
+    AUTH_NONE: AUTH_NONE,
+    AUTH_SUCCESS: AUTH_SUCCESS,
+    AUTH_WAIT: AUTH_WAIT,
+    AUTH_REJECTED: AUTH_REJECTED
+  },
+  EVENTS: EVENTS
+};
 
-
-var account = new Account();
-
-account.on(EVENTS.CHANGE_CREDENTIALS, (acc) => {
-  console.log(new Date(), "CHANGE CREDENTIALS");
-  console.log(acc.sessionid, acc.csrftoken);
-  console.log(acc.accountId);
-});
-
-account.on(EVENTS.AUTH_CONFIRMED, (acc) => {
-  console.log(new Date(), "AUTH_CONFIRMED");
-  console.log(acc.sessionid, acc.csrftoken);
-  console.log(acc.accountId);
-  var checkInterval = setInterval(function(){
-    acc.getStatus()
-      .then((status)=>{
-        acc.combineCard([121290,121389,121407]).then((data) => {
-          console.log("Combine card", data);
-        }).catch((error)=>{
-          console.log('Error Combine card', error);
-        });
-      })
-      .catch((error) => {
-        clearTimeout(checkInterval);
-        console.log("Error", error);
-      });
-  }, 10000);
-});
-
-var auth = account.requestAuth('Chrome 56.2.4').then(function(response){
-  console.log("Page", response.authPage);
-  setInterval(function(){
-    checkAuth(response.account);
-  }, 15000);
-}).catch(function(error){
-  console.error(error);
-});
 
 
 

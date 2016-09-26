@@ -68,9 +68,29 @@ dbPool.getConnectionSync()
   });
 
 
-function updateAccountInDb(a,b,c) {
-  console.log("updateAccountInDb");
-  console.log(a,b,c);
+function updateAccountInDb(acc) {
+  if (!(acc instanceof account.Account)) {
+    throw new Error("Wrong param");
+  }
+  dbPool.getConnectionSync().then((conn) => {
+    let insertData = [
+      acc.sessionid,
+      acc.csrftoken,
+      acc.authState,
+      new Date(),
+      acc.id
+    ];
+
+    conn.query("UPDATE auth_requests SET sessionid = ?, csrftoken = ?, state = ?, updateDate = ?  WHERE token_id = ?", insertData, (err) => {
+      conn.release();
+      if (err) {
+        console.log("DB Error: ", err);
+        return;
+      }
+      console.log("Update request in DB");
+    });
+  });
+
 }
 
 
@@ -91,6 +111,7 @@ function createAuthRequest(params, res) {
             updateDate: new Date()
           };
           conn.query("INSERT INTO auth_requests SET ?", insertData, (err) => {
+            conn.release();
             if (err) {
               res.statusCode = 500;
               res.setHeader("Content-Type", "text/json");

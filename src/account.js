@@ -48,6 +48,7 @@ class Account extends EventEmitter{
     this.lastState = null;
     this.accountId = null;
     this.accountName = null;
+    this.controlEnabled = null;
     this.sessionExpireAt = null;
     this.authState = AUTH_NONE;
   }
@@ -217,6 +218,7 @@ class Account extends EventEmitter{
 
       request.then((bodyData) => {
         var status = {};
+        status.account = this;
         if (bodyData.account != null) {
           status.cards = {
             '0': {},
@@ -250,15 +252,34 @@ class Account extends EventEmitter{
             "help_barrier": bodyData.account.hero.cards.help_barrier,
             "help_count": bodyData.account.hero.cards.help_count
           };
+          status.game_state = bodyData.game_state;
           status.mode = bodyData.mode;
           status.base = bodyData.account.hero.base;
+          status.base.health_percent = status.base.health / status.base.max_health;
           status.energy = bodyData.account.hero.energy;
+          status.energy_total = status.energy.value + status.energy.bonus;
           status.quests = bodyData.account.hero.quests;
           status.action = bodyData.account.hero.action;
           status.companion = bodyData.account.hero.companion;
+          status.turn = bodyData.turn;
           resolve(status);
         } else {
-          reject(new Error('No account info, check auth state'));
+          status.game_state = -1;
+          status.cards = {
+            '0': {},
+            '1': {},
+            '2': {},
+            '3': {},
+            '4': {}
+          };
+          status.mode = null;
+          status.base = null;
+          status.energy = null;
+          status.quests = null;
+          status.action = null;
+          status.companion = null;
+          status.turn = bodyData.turn;
+          resolve(status);
         }
       }).catch((error) => {
         reject(error);

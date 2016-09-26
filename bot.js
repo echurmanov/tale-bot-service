@@ -1,3 +1,5 @@
+"use strict";
+
 const mysql = require("mysql");
 const Promise = require('bluebird');
 const config = require("./config.json");
@@ -17,6 +19,8 @@ const dbPool = mysql.createPool({
 
 var accounts = [];
 var users = {};
+
+var gameAccounts = {};
 
 dbPool.getConnectionSync = Promise.promisify(dbPool.getConnection);
 
@@ -78,10 +82,11 @@ function updateAccountInDb(acc) {
       acc.csrftoken,
       acc.authState,
       new Date(),
+      acc.accountId,
       acc.id
     ];
 
-    conn.query("UPDATE auth_requests SET sessionid = ?, csrftoken = ?, state = ?, updateDate = ?  WHERE token_id = ?", insertData, (err) => {
+    conn.query("UPDATE auth_requests SET sessionid = ?, csrftoken = ?, state = ?, updateDate = ?, account_id = ?  WHERE token_id = ?", insertData, (err) => {
       conn.release();
       if (err) {
         console.log("DB Error: ", err);
@@ -90,7 +95,6 @@ function updateAccountInDb(acc) {
       console.log("Update request in DB");
     });
   });
-
 }
 
 
@@ -108,7 +112,9 @@ function createAuthRequest(params, res) {
             sessionid: acc.sessionid,
             csrftoken: acc.csrftoken,
             state: acc.authState,
-            updateDate: new Date()
+            updateDate: new Date(),
+            account_id: acc.accountId,
+            controlStatus: true
           };
           conn.query("INSERT INTO auth_requests SET ?", insertData, (err) => {
             conn.release();
@@ -142,6 +148,64 @@ function createAuthRequest(params, res) {
   }
 }
 
+function loadUser(userId, req) {
+  if (typeof users[userId] == 'undefined') {
+    dbPool.getConnectionSync().then((conn) => {
+      conn.query("SELECT * FROM users WHERE user_id = ?", [userId], function(error,results){
+        if (err) {
+          res.statusCode = 500;
+          res.setHeader("Content-Type", "text/json");
+          res.write(JSON.stringify({ "success": false, "error": err.message }));
+          res.end();
+          return;
+        }
+        if (results.length > 0) {
+          users[results[0]['user_id']] = results[0];
+          users[results[0]['user_id']].accounts = new Array();
+          conn.query("SELECT * FROM auth_requests  WHERE user_id = ?", [userId], function(err,results){
+            conn.release();
+            if (err) {
+              res.statusCode = 500;
+              res.setHeader("Content-Type", "text/json");
+              res.write(JSON.stringify({"success": false, "error": err.message}));
+              res.end();
+              return;
+            }
+            for (let i = 0; i < results.length; i++) {
+              let acc = new account.Account();
+              acc.sessionid = results[i].sessionid;
+              acc.csrftoken = results[i].csrftoken;
+              acc.authState = results[i].state;
+              acc.controlEnabled = results[i].controlStatus;
+              acc.id = results[i].token_id;
+              accounts.push(acc);
+              if (acc.authState != account.AUTH.AUTH_REJECTED) {
+                acc.checkAuth().then((authData) => {
+                  authData.account.setAuthState(authData.state);
+                });
+              }
+              acc.on(account.EVENTS.AUTH_STATE_CHANGED, updateAccountInDb);
+              acc.on(account.EVENTS.CHANGE_CREDENTIALS, updateAccountInDb);
+              acc._user = users[results[i].user_id];
+              users[results[i].user_id].accounts.push(acc);
+            }
+            res.statusCode = 200;
+            res.setHeader("Content-Type", "text/json");
+            res.write(JSON.stringify({"success": true}));
+            res.end();
+          });
+        }
+      });
+
+    }).catch((error) => {
+      res.statusCode = 500;
+      res.setHeader("Content-Type", "text/json");
+      res.write(JSON.stringify({ "success": false, "error":error.message }));
+      res.end();
+    })
+  }
+}
+
 
 function startHttpServer() {
   console.log("Starting HTTP server");
@@ -152,14 +216,58 @@ function startHttpServer() {
       case '/create-request':
         createAuthRequest(Querystring.parse(urlData.query), res);
         break;
+      case '/load-user':
+        let params = Querystring.parse(urlData.query);
+        loadUser(params["userId"], res);
+        break;
       default:
         res.statusCode = 404;
         res.end();
     }
-
   });
   server.once('listening', () => {
     console.log(["HTTP server started at ",config.bot.host,":",config.bot.port].join(''));
   });
   server.listen(config.bot.port, config.bot.host);
 }
+
+/**
+ *
+ * @param {account.Account} acc
+ * @param status
+ */
+function processStatus(acc, status) {
+
+}
+
+/**
+ *
+ * @param {account.Account[]} accounts
+ * @param {Number} turn
+ */
+function processAccounts(accounts, turn) {
+  for (let i = 0; i < accounts.length; i++) {
+    let acc = accounts[i];
+    if (acc.controlEnabled && acc.authState == account.AUTH.AUTH_SUCCESS) {
+      acc.getStatus().then((data) => {
+        processStatus(data.account, data);
+      }).catch((error) => {
+        console.error("Get STATUS ERROR", error);
+      });
+    }
+  }
+}
+
+var checkAccount = new account.Account();
+
+var lastTurn = 0;
+setInterval(function(){
+  checkAccount.getStatus().then((status) => {
+    if (typeof status.turn !== 'undefined' && status.turn != null) {
+      if (lastTurn != status.turn.turn) {
+        setTimeout(function(){processAccounts(accounts, status.turn.turn);}, 3000);
+      }
+      lastTurn = status.turn.turn;
+    }
+  });
+}, 3000);

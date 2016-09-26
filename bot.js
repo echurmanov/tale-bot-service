@@ -268,7 +268,7 @@ function processStatus(acc, status) {
       });
   }
   if (botConfig.takeCard(status)) {
-    acc.sendHelp()
+    acc.takeCard()
       .then((data) => {
         console.log("NEW CARD", data);
       })

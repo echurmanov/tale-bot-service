@@ -6,7 +6,6 @@ const http = require ('http');
 var PromiseRequest = Promise.method(function(options, data) {
 
   return new Promise(function(resolve, reject) {
-    console.log(options);
     var request = http.request(options, function(response) {
       // Bundle the result
       var result = {
@@ -30,12 +29,9 @@ var PromiseRequest = Promise.method(function(options, data) {
 
     // Handle errors
     request.on('error', function(error) {
-      console.log("Request Error", error);
       reject(error);
     });
-    console.log(data);
     if (typeof data != 'undefined') {
-      console.log("Write data");
       request.write(data);
     }
     request.end();
@@ -52,8 +48,18 @@ var TokenGenerator = function(){
   return text;
 };
 
+var ParseCookies = function (cookieSets) {
+  var list = {};
+  for(var i = 0; i < cookieSets.length; i++) {
+    var rawCookie = cookieSets[i].split(';')[0].split('=');
+    list[rawCookie[0]] = rawCookie[1];
+  }
+  return list;
+};
+
 
 module.exports = {
   PromiseRequest: PromiseRequest,
-  TokenGenerator: TokenGenerator
+  TokenGenerator: TokenGenerator,
+  ParseCookies: ParseCookies
 };

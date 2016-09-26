@@ -249,8 +249,8 @@ class Account extends EventEmitter{
           }
 
           status.help = {
-            "help_barrier": bodyData.account.hero.cards.help_barrier,
-            "help_count": bodyData.account.hero.cards.help_count
+            "barrier": bodyData.account.hero.cards.help_barrier,
+            "count": bodyData.account.hero.cards.help_count
           };
           status.game_state = bodyData.game_state;
           status.mode = bodyData.mode;

@@ -267,6 +267,15 @@ function processStatus(acc, status) {
         console.log("ERROR ON HELP")
       });
   }
+  if (botConfig.takeCard(status)) {
+    acc.sendHelp()
+      .then((data) => {
+        console.log("NEW CARD", data);
+      })
+      .catch((error) => {
+        console.log("ERROR ON TAKE KARD")
+      });
+  }
 }
 
 /**

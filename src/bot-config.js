@@ -7,6 +7,11 @@ class BotConfig
 {
   constructor () {
     this.helpConditions = [];
+    this.autoTakeCard = true;
+    this.autoCombineCards = {
+      auction: true,
+      not_auction: true
+    };
   }
 
   /**
@@ -34,6 +39,14 @@ class BotConfig
         return true;
       }
     }
+    return false;
+  }
+
+  takeCard(status) {
+    return this.autoTakeCard && status.help.count >= status.help.barrier;
+  }
+
+  combineCard(status) {
     return false;
   }
 }

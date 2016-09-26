@@ -33,6 +33,12 @@ const REL = {
 
 class Rule
 {
+  /**
+   *
+   * @param param
+   * @param rel
+   * @param value
+   */
   constructor(param, rel, value) {
     this.param = param;
     this.rel = rel;
@@ -44,7 +50,7 @@ class Rule
     if (this._cache == null) {
       var vars = map[this.param].split(".");
       var str = [
-        ["hero[", vars[0], "][", vars[1], "]"].join('')
+        ["hero['", vars[0], "']['", vars[1], "']"].join('')
       ];
       switch (this.rel) {
         case REL.GREATER:
@@ -72,7 +78,7 @@ class Rule
   }
 
   toFunction() {
-    return eval(["function (hero){return ",this.toString(),";}"].join(''));
+    return new Function('hero', ["return ",this.toString(),";"].join(''));
   }
 }
 

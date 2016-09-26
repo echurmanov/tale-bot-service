@@ -257,7 +257,7 @@ class Account extends EventEmitter{
           status.base = bodyData.account.hero.base;
           status.base.health_percent = status.base.health / status.base.max_health;
           status.energy = bodyData.account.hero.energy;
-          status.energy_total = status.energy.value + status.energy.bonus;
+          status.energy.total = status.energy.value + status.energy.bonus;
           status.quests = bodyData.account.hero.quests;
           status.action = bodyData.account.hero.action;
           status.companion = bodyData.account.hero.companion;

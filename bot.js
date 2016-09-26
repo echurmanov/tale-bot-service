@@ -49,6 +49,7 @@ dbPool.getConnectionSync()
           acc.sessionid = result[i].sessionid;
           acc.csrftoken = result[i].csrftoken;
           acc.authState = result[i].state;
+          acc.controlEnabled = result[i].controlStatus;
           acc.id = result[i].token_id;
           accounts.push(acc);
           if (acc.authState != account.AUTH.AUTH_REJECTED) {
@@ -231,13 +232,41 @@ function startHttpServer() {
   server.listen(config.bot.port, config.bot.host);
 }
 
+const rule = require("./src/rule.js");
+
+var botConfig = new (require("./src/bot-config"))();
+
+botConfig.addRules([
+  new rule.Rule(rule.PARAM.HERO_TOTAL_ENERGY, rule.REL.GREATER, 20),
+  new rule.Rule(rule.PARAM.HERO_ACTION, rule.REL.IS, 0),
+  new rule.Rule(rule.PARAM.HERO_ACTION_PERCENT, rule.REL.GREATER, 0),
+  new rule.Rule(rule.PARAM.HERO_ACTION_PERCENT, rule.REL.LOWER, 1)
+]);
+
+botConfig.addRules([
+  new rule.Rule(rule.PARAM.HERO_ENERGY_BONUS, rule.REL.GREATER, 5000),
+  new rule.Rule(rule.PARAM.HERO_ACTION, rule.REL.IS, 2),
+  new rule.Rule(rule.PARAM.HERO_ACTION_PERCENT, rule.REL.GREATER, 0),
+  new rule.Rule(rule.PARAM.HERO_ACTION_PERCENT, rule.REL.LOWER, 1)
+]);
+
+
+
 /**
  *
- * @param {account.Account} acc
+ * @param {Account} acc
  * @param status
  */
 function processStatus(acc, status) {
-
+  if (botConfig.checkNeedHelp(status)) {
+    acc.sendHelp()
+      .then((data) => {
+        console.log("HELP SUCCESS");
+      })
+      .catch((error) => {
+        console.log("ERROR ON HELP")
+      });
+  }
 }
 
 /**
@@ -246,6 +275,7 @@ function processStatus(acc, status) {
  * @param {Number} turn
  */
 function processAccounts(accounts, turn) {
+  console.log("PROCESS");
   for (let i = 0; i < accounts.length; i++) {
     let acc = accounts[i];
     if (acc.controlEnabled && acc.authState == account.AUTH.AUTH_SUCCESS) {
@@ -264,10 +294,12 @@ var lastTurn = 0;
 setInterval(function(){
   checkAccount.getStatus().then((status) => {
     if (typeof status.turn !== 'undefined' && status.turn != null) {
-      if (lastTurn != status.turn.turn) {
+      if (lastTurn != status.turn.number) {
         setTimeout(function(){processAccounts(accounts, status.turn.turn);}, 3000);
       }
-      lastTurn = status.turn.turn;
+      lastTurn = status.turn.number;
     }
+  }).catch((error) => {
+    console.log("ERRO ON CHECK TURN", error);
   });
 }, 3000);

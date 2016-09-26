@@ -42,6 +42,7 @@ class Account extends EventEmitter{
   constructor()
   {
     super();
+    this.id = null;
     this.sessionid = null;
     this.csrftoken = null;
     this.lastState = null;
@@ -198,7 +199,7 @@ class Account extends EventEmitter{
             break;
           default:
             this.setAuthState(AUTH_NONE);
-            reject(new Error("Auth not requested"));
+            resolve({account: this, state: AUTH_REJECTED});
             break;
         }
       }).catch((error) => {

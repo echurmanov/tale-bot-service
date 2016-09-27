@@ -39,9 +39,10 @@ const CHECK_PROCESS_STATUS_DELAY = 500;
 
 
 class Account extends EventEmitter{
-  constructor()
+  constructor(logger)
   {
     super();
+    this.logger = logger;
     this.id = null;
     this.sessionid = null;
     this.csrftoken = null;
@@ -51,6 +52,7 @@ class Account extends EventEmitter{
     this.controlEnabled = null;
     this.sessionExpireAt = null;
     this.authState = AUTH_NONE;
+    this.botConfigId = null;
   }
 
   apiRequest(apiUrl, method, version, getParams, postParams) {
@@ -91,7 +93,14 @@ class Account extends EventEmitter{
         options.headers['Content-Length'] = Buffer.from(encodedPostData).length;
       }
       var request = new Request(options, encodedPostData);
+      var requestTime = new Date();
       request.then((response) => {
+        if (this.logger) {
+          this.logger.logApiRequest(
+            this.id, this.accountId, apiUrl, JSON.stringify(options), encodedPostData, requestTime,
+            response.body, response.httpStatusCode, new Date()
+          );
+        }
         if (response.httpStatusCode == 200) {
           let bodyData = {};
           try {

@@ -54,9 +54,11 @@ class Rule
       ];
       switch (this.rel) {
         case REL.GREATER:
+          this.value = 1 * this.value;
           str.push(">");
           break;
         case REL.LOWER:
+          this.value = 1 * this.value;
           str.push("<");
           break;
         case REL.IS:
@@ -65,7 +67,7 @@ class Rule
         case REL.YES:
           str.push("== true");
           break;
-        case REL.FALSE:
+        case REL.NO:
           str.push("== false");
           break;
       }

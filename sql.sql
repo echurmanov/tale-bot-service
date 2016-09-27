@@ -57,3 +57,30 @@ CREATE TABLE `bot_config_cards_limits` (
   PRIMARY KEY (`bot_config_id`, `card_name`)
 )ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
+CREATE TABLE `card_list` (
+  `card_name` varchar(255),
+  `card_type` int,
+  `card_rarity` int,
+  PRIMARY KEY (`card_name`)
+)ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+CREATE TABLE `api_request_log` (
+  `token_id` varchar(255),
+  `account_id` int,
+  `request_url` text,
+  `request_time` timestamp,
+  `request_options` MEDIUMTEXT,
+  `request` text,
+  `response_status` int,
+  `response_body` MEDIUMTEXT,
+  `response_time` timestamp
+)ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+CREATE TABLE `bot_action_log` (
+  `token_id` varchar(255),
+  `account_id` int,
+  `action_date` datetime,
+  `action_type` varchar(255),
+  `action_params` MEDIUMTEXT,
+  `action_result` MEDIUMTEXT
+)ENGINE=InnoDB DEFAULT CHARSET=utf8;

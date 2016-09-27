@@ -209,6 +209,22 @@ class Account extends EventEmitter{
     });
   }
 
+  getAccountInfo() {
+    return new Promise((resolve, reject) => {
+
+      var url = ['/accounts/',this.accountId,'/api/show'].join('');
+      var version = '1.0';
+      var request = this.apiRequest(url, 'GET', version);
+
+      request.then((bodyData) => {
+        if (this.accountName != bodyData.name ) {
+          this.accountName = bodyData.name;
+          this.emit(EVENTS.CHANGE_CREDENTIALS, this);
+        }
+        resolve(this);
+      }).catch((error) => {reject(error);});
+    });
+  }
 
   getStatus() {
     return new Promise((resolve, reject) => {

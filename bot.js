@@ -50,6 +50,7 @@ dbPool.getConnectionSync()
           acc.csrftoken = result[i].csrftoken;
           acc.authState = result[i].state;
           acc.controlEnabled = result[i].controlStatus;
+          acc.accountName = result[i].account_name;
           acc.id = result[i].token_id;
           accounts.push(acc);
           if (acc.authState != account.AUTH.AUTH_REJECTED) {
@@ -84,10 +85,12 @@ function updateAccountInDb(acc) {
       acc.authState,
       new Date(),
       acc.accountId,
+      acc.accountName,
       acc.id
+
     ];
 
-    conn.query("UPDATE auth_requests SET sessionid = ?, csrftoken = ?, state = ?, updateDate = ?, account_id = ?  WHERE token_id = ?", insertData, (err) => {
+    conn.query("UPDATE auth_requests SET sessionid = ?, csrftoken = ?, state = ?, updateDate = ?, account_id = ?, account_name = ?  WHERE token_id = ?", insertData, (err) => {
       conn.release();
       if (err) {
         console.log("DB Error: ", err);
@@ -115,6 +118,7 @@ function createAuthRequest(params, res) {
             state: acc.authState,
             updateDate: new Date(),
             account_id: acc.accountId,
+            account_name: acc.accountName,
             controlStatus: true
           };
           conn.query("INSERT INTO auth_requests SET ?", insertData, (err) => {
@@ -142,6 +146,32 @@ function createAuthRequest(params, res) {
         res.end();
       });
 
+  } else {
+    res.setHeader("Content-Type", "text/json");
+    res.write(JSON.stringify({ "success": false, "error":"User not found" }));
+    res.end();
+  }
+}
+
+
+function getUserAuthRequests(params, res) {
+  if (typeof params['user_id'] !== 'undefined' && typeof users[params['user_id']] != 'undefined') {
+    let user = users[params['user_id']];
+    let accs = user.accounts;
+    let result = [];
+    for (let i = 0; i < accs.length; i++) {
+      result.push({
+        "id": accs[i].id,
+        "accountId": accs[i].accountId,
+        "accountName": accs[i].accountName,
+        "authState": accs[i].authState,
+        "controlState": accs[i].controlEnabled
+      });
+    }
+    console.log(result);
+    res.setHeader("Content-Type", "text/json");
+    res.write(JSON.stringify({"success": true, "accounts": result}));
+    res.end();
   } else {
     res.setHeader("Content-Type", "text/json");
     res.write(JSON.stringify({ "success": false, "error":"User not found" }));
@@ -178,6 +208,8 @@ function loadUser(userId, req) {
               acc.csrftoken = results[i].csrftoken;
               acc.authState = results[i].state;
               acc.controlEnabled = results[i].controlStatus;
+              acc.accountId = results[i].account_id;
+              acc.accountName = results[i].account_name;
               acc.id = results[i].token_id;
               accounts.push(acc);
               if (acc.authState != account.AUTH.AUTH_REJECTED) {
@@ -216,6 +248,9 @@ function startHttpServer() {
     switch (urlData.pathname) {
       case '/create-request':
         createAuthRequest(Querystring.parse(urlData.query), res);
+        break;
+      case '/get-user-requests':
+        getUserAuthRequests(Querystring.parse(urlData.query), res);
         break;
       case '/load-user':
         let params = Querystring.parse(urlData.query);
@@ -293,6 +328,8 @@ function processAccounts(accounts, turn) {
       }).catch((error) => {
         console.error("Get STATUS ERROR", error);
       });
+    } else if (acc.authState != account.AUTH.AUTH_SUCCESS && acc.authState != account.AUTH.AUTH_REJECTED) {
+      acc.checkAuth();
     }
   }
 }

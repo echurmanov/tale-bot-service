@@ -302,6 +302,10 @@ function loadUser(userId, res) {
             res.write(JSON.stringify({"success": true}));
             res.end();
           });
+        } else {
+          res.setHeader("Content-Type", "text/json");
+          res.write(JSON.stringify({ "success": false, "error": "User with ID \""+userId+"\" not found" }));
+          res.end();
         }
       });
 
@@ -311,6 +315,10 @@ function loadUser(userId, res) {
       res.write(JSON.stringify({ "success": false, "error":error.message }));
       res.end();
     })
+  } else {
+    res.setHeader("Content-Type", "text/json");
+    res.write(JSON.stringify({ "success": false, "error": "User already loaded" }));
+    res.end();
   }
 }
 

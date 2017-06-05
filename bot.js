@@ -250,7 +250,7 @@ function getUserAuthRequests(params, res) {
   }
 }
 
-function loadUser(userId, req) {
+function loadUser(userId, res) {
   if (typeof users[userId] == 'undefined') {
     dbPool.getConnectionSync().then((conn) => {
       conn.query("SELECT * FROM users WHERE user_id = ?", [userId], function(err,results){

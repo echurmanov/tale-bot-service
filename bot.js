@@ -253,7 +253,7 @@ function getUserAuthRequests(params, res) {
 function loadUser(userId, req) {
   if (typeof users[userId] == 'undefined') {
     dbPool.getConnectionSync().then((conn) => {
-      conn.query("SELECT * FROM users WHERE user_id = ?", [userId], function(error,results){
+      conn.query("SELECT * FROM users WHERE user_id = ?", [userId], function(err,results){
         if (err) {
           res.statusCode = 500;
           res.setHeader("Content-Type", "text/json");
